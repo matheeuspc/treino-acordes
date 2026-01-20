@@ -5,10 +5,30 @@
 <title>Treino de Acordes</title>
 
 <style>
+    * {
+        box-sizing: border-box;
+    
+    }
+    :root {
+        --bg: #111;
+        --card: #1c1c1c;
+        --text: #fff;
+        --subtext: #ccc;
+        --input: #333;
+    }
+
+    body.light {
+        --bg: #f2f2f2;
+        --card: #ffffff;
+        --text: #111;
+        --subtext: #555;
+        --input: #e5e5e5;
+    }
+
     body {
         font-family: Arial, sans-serif;
-        background: #111;
-        color: #fff;
+        background: var(--bg);
+        color: var(--text);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -17,10 +37,11 @@
     }
 
     .container {
-        background: #1c1c1c;
+        background: var(--card);
         padding: 30px;
         border-radius: 14px;
         width: 600px;
+        position: relative;
     }
 
     h1 {
@@ -37,15 +58,17 @@
         font-size: 18px;
         display: block;
         margin-bottom: 6px;
-        color: #ccc;
+        color: var(--subtext);
     }
 
     input, select {
         width: 100%;
-        padding: 14px;
+        padding: 16px 18px;
         font-size: 20px;
         border-radius: 8px;
         border: none;
+        background: var(--input);
+        color: var(--text);
     }
 
     .buttons {
@@ -61,6 +84,7 @@
         border: none;
         border-radius: 10px;
         cursor: pointer;
+        color: #fff;
     }
 
     button.start {
@@ -84,14 +108,76 @@
 
     .next {
         font-size: 42px;
-        color: #aaa;
+        color: var(--subtext);
         margin-top: 12px;
+    }
+
+    /* SWITCH DE TEMA */
+    .theme-toggle {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        user-select: none;
+    }
+
+    .switch {
+        position: relative;
+        width: 54px;
+        height: 28px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: #777;
+        border-radius: 30px;
+        transition: 0.3s;
+    }
+
+    .slider::before {
+        content: "";
+        position: absolute;
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        top: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: 0.3s;
+    }
+
+    .switch input:checked + .slider {
+        background: #bbb;
+    }
+
+    .switch input:checked + .slider::before {
+        transform: translateX(26px);
     }
 </style>
 </head>
 
 <body>
 <div class="container">
+    <div class="theme-toggle">
+        🌙
+        <label class="switch">
+            <input type="checkbox" onchange="toggleTheme()">
+            <span class="slider"></span>
+        </label>
+        ☀️
+    </div>
+
     <h1>Treino de Acordes</h1>
 
     <div class="field">
@@ -135,6 +221,10 @@ let proximoAcorde = null;
 
 const ANTECIPACAO_MS = 300;
 
+function toggleTheme() {
+    document.body.classList.toggle('light');
+}
+
 function iniciar() {
     parar();
     rodando = true;
@@ -175,15 +265,11 @@ function iniciar() {
 function parar() {
     rodando = false;
 
-    if (intervalo) {
-        clearInterval(intervalo);
-        intervalo = null;
-    }
+    if (intervalo) clearInterval(intervalo);
+    if (timeoutId) clearTimeout(timeoutId);
 
-    if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-    }
+    intervalo = null;
+    timeoutId = null;
 
     document.getElementById('acordeAtual').textContent = "—";
     document.getElementById('acordeProximo').textContent = "";
