@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Treino de Troca de Acordes</title>
+<meta charset="UTF-8" />
+<title>Treino de Acordes</title>
+
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -16,110 +17,150 @@
     }
 
     .container {
-        text-align: center;
-        width: 90%;
-        max-width: 500px;
+        background: #1c1c1c;
+        padding: 30px;
+        border-radius: 14px;
+        width: 600px;
     }
 
     h1 {
-        margin-bottom: 20px;
+        text-align: center;
+        margin-bottom: 25px;
+        font-size: 32px;
     }
 
-    input, select, button {
+    .field {
+        margin-bottom: 18px;
+    }
+
+    label {
+        font-size: 18px;
+        display: block;
+        margin-bottom: 6px;
+        color: #ccc;
+    }
+
+    input, select {
         width: 100%;
-        padding: 10px;
-        margin: 8px 0;
-        font-size: 16px;
+        padding: 14px;
+        font-size: 20px;
+        border-radius: 8px;
+        border: none;
+    }
+
+    .buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 25px;
     }
 
     button {
-        cursor: pointer;
+        flex: 1;
+        padding: 16px;
+        font-size: 22px;
         border: none;
-        background: #00c853;
-        color: #000;
-        font-weight: bold;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    button.start {
+        background: #2ecc71;
     }
 
     button.stop {
-        background: #ff5252;
+        background: #e74c3c;
     }
 
-    .acorde {
-        margin-top: 30px;
-        font-size: 96px;
+    .display {
+        margin-top: 35px;
+        text-align: center;
+    }
+
+    .current {
+        font-size: 120px;
         font-weight: bold;
-        height: 120px;
+        line-height: 1;
     }
 
-    .proximo {
-        font-size: 36px;
-        opacity: 0.6;
-        height: 40px;
+    .next {
+        font-size: 42px;
+        color: #aaa;
+        margin-top: 12px;
     }
 </style>
 </head>
+
 <body>
-
 <div class="container">
-    <h1>Treino de Troca de Acordes</h1>
+    <h1>Treino de Acordes</h1>
 
-    <input type="text" id="acordesInput" placeholder="Ex: C, D, F#">
+    <div class="field">
+        <label>Acordes (separe por vírgula)</label>
+        <input id="acordes" placeholder="Ex: C, D, F#, Am, G7" />
+    </div>
 
-    <input type="number" id="bpmInput" value="80">
+    <div class="field">
+        <label>Velocidade (BPM)</label>
+        <input id="bpm" type="number" value="80" />
+    </div>
 
-    <select id="modoSelect">
-        <option value="sequencial">Sequencial</option>
-        <option value="aleatorio">Aleatório (sem repetir)</option>
-    </select>
+    <div class="field">
+        <label>Modo</label>
+        <select id="modo">
+            <option value="sequencial">Sequencial</option>
+            <option value="aleatorio">Aleatório</option>
+        </select>
+    </div>
 
-    <button onclick="iniciar()">Iniciar</button>
-    <button class="stop" onclick="parar()">Parar</button>
+    <div class="buttons">
+        <button class="start" onclick="iniciar()">Iniciar</button>
+        <button class="stop" onclick="parar()">Parar</button>
+    </div>
 
-    <div class="acorde" id="acordeAtual">—</div>
-    <div class="proximo" id="acordeProximo"></div>
+    <div class="display">
+        <div class="current" id="acordeAtual">—</div>
+        <div class="next" id="acordeProximo"></div>
+    </div>
 </div>
 
 <script>
-    let acordes = [];
-    let index = 0;
-    let intervalo = null;
-    let audioCtx = null;
-    let ultimoAcorde = null;
-    let proximoAcorde = null;
+let intervalo = null;
+let timeoutId = null;
+let rodando = false;
 
-    const ANTECIPACAO_MS = 200;
+let lista = [];
+let indice = 0;
+let ultimoAcorde = null;
+let proximoAcorde = null;
 
-    function iniciar() {
-        const texto = document.getElementById('acordesInput').value;
-        const bpm = parseInt(document.getElementById('bpmInput').value);
-        const modo = document.getElementById('modoSelect').value;
+const ANTECIPACAO_MS = 300;
 
-        if (!texto || bpm <= 0) {
-            alert("Preencha os acordes e um BPM válido.");
-            return;
-        }
+function iniciar() {
+    parar();
+    rodando = true;
 
-        acordes = texto.split(',').map(a => a.trim()).filter(a => a);
-        index = 0;
-        ultimoAcorde = null;
+    lista = document.getElementById('acordes')
+        .value
+        .split(',')
+        .map(a => a.trim())
+        .filter(a => a.length > 0);
 
-        const intervaloMs = 60000 / bpm;
+    if (lista.length === 0) return;
 
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
+    const bpm = parseInt(document.getElementById('bpm').value);
+    const modo = document.getElementById('modo').value;
+    const intervaloMs = 60000 / bpm;
 
-        // Primeira preparação
-        proximoAcorde = escolherProximo(modo);
-        document.getElementById('acordeProximo').textContent = "→ " + proximoAcorde;
+    indice = 0;
+    ultimoAcorde = null;
 
-        intervalo = setInterval(() => {
-            mostrarProximoAntes(intervaloMs, modo);
-        }, intervaloMs);
-    }
+    proximoAcorde = escolherProximo(modo);
+    document.getElementById('acordeProximo').textContent = "→ " + proximoAcorde;
 
-    function mostrarProximoAntes(intervaloMs, modo) {
-        setTimeout(() => {
+    intervalo = setInterval(() => {
+        timeoutId = setTimeout(() => {
+            if (!rodando) return;
+
             document.getElementById('acordeAtual').textContent = proximoAcorde;
             ultimoAcorde = proximoAcorde;
             tocarClick();
@@ -128,43 +169,60 @@
             document.getElementById('acordeProximo').textContent = "→ " + proximoAcorde;
 
         }, intervaloMs - ANTECIPACAO_MS);
-    }
+    }, intervaloMs);
+}
 
-    function escolherProximo(modo) {
-        if (modo === "sequencial") {
-            const acorde = acordes[index];
-            index = (index + 1) % acordes.length;
-            return acorde;
-        } else {
-            let acorde;
-            do {
-                acorde = acordes[Math.floor(Math.random() * acordes.length)];
-            } while (acorde === ultimoAcorde && acordes.length > 1);
-            return acorde;
-        }
-    }
+function parar() {
+    rodando = false;
 
-    function parar() {
+    if (intervalo) {
         clearInterval(intervalo);
         intervalo = null;
-        document.getElementById('acordeAtual').textContent = "—";
-        document.getElementById('acordeProximo').textContent = "";
     }
 
-    function tocarClick() {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        osc.frequency.value = 1000;
-        gain.gain.value = 0.1;
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.05);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
     }
+
+    document.getElementById('acordeAtual').textContent = "—";
+    document.getElementById('acordeProximo').textContent = "";
+}
+
+function escolherProximo(modo) {
+    let candidato;
+
+    if (modo === "sequencial") {
+        do {
+            candidato = lista[indice % lista.length];
+            indice++;
+        } while (candidato === ultimoAcorde && lista.length > 1);
+    } else {
+        do {
+            candidato = lista[Math.floor(Math.random() * lista.length)];
+        } while (candidato === ultimoAcorde && lista.length > 1);
+    }
+
+    return candidato;
+}
+
+function tocarClick() {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.frequency.value = 1000;
+    osc.type = "square";
+
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.05);
+}
 </script>
-
 </body>
 </html>
